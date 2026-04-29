@@ -1,4 +1,4 @@
-## 🚀 Hướng dẫn cài đặt và chạy trên Windows
+## Hướng dẫn cài đặt và chạy trên Windows
 
 Dự án này bao gồm hai phần chính: **Backend (Django)** và **Frontend (React)**.
 
@@ -52,9 +52,3 @@ Mở một cửa sổ terminal mới (vẫn đứng tại thư mục gốc dự 
    npm start
    ```
    *Ứng dụng sẽ tự động mở tại: `http://localhost:3000/`*
-
----
-
-### 💡 Lưu ý dành cho người dùng Windows
-* **Lỗi thực thi script:** Nếu PowerShell báo lỗi khi chạy lệnh `activate`, hãy mở PowerShell với quyền Administrator và chạy lệnh: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`.
-* **Cơ sở dữ liệu:** Mặc định dự án sử dụng SQLite (`db.sqlite3`), dữ liệu sẽ tự động được tạo sau khi bạn chạy server lần đầu.
