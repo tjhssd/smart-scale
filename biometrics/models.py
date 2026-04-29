@@ -1,7 +1,11 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class HealthRecord(models.Model):
-    # Định danh thiết bị (phòng trường hợp sau này có nhiều cân)
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='records')
+
+    # Định danh thiết bị
     device_id = models.CharField(max_length=50, default="SCALE_01")
     
     # Các chỉ số đo đạc
