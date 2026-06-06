@@ -1,4 +1,3 @@
-# --- Python / Django (Backend) ---
 venv/
 env/
 ENV/
@@ -11,7 +10,6 @@ db.sqlite3
 .env
 
 
-# --- React (Frontend) ---
 frontend/node_modules/
 node_modules/
 
@@ -22,7 +20,6 @@ yarn-debug.log*
 yarn-error.log*
 
 
-# --- Hệ điều hành & Khác ---
 .DS_Store
 Thumbs.db
 .vscode/
