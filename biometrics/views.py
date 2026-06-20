@@ -6,9 +6,11 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAdminUser
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from datetime import timedelta
 
-from .models import HealthRecord, Device
+# Import models mới 
+from .models import HealthRecord, Device, MeasurementSession
 from .serializers import (
     HealthRecordSerializer, 
     DeviceSerializer, 
@@ -16,9 +18,8 @@ from .serializers import (
     RegisterSerializer
 )
 
-# =======================================================
+
 # --- 1. XÁC THỰC NGƯỜI DÙNG ---
-# =======================================================
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -32,23 +33,22 @@ class CustomLoginView(ObtainAuthToken):
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
 
-        # Trả về cờ Admin để React biết đường ẩn/hiện trang quản trị
+        # Trả về Admin để React biết đường ẩn/hiện trang quản trị
         return Response({
             'token': token.key,
             'username': user.username,
             'is_admin': user.is_superuser or user.is_staff
         })
+    
 
-# =======================================================
-# --- 2. API DÀNH CHO GIAO DIỆN REACT ---
-# =======================================================
+# --- 2. API GIAO DIỆN REACT ---
 
 class HealthRecordViewSet(viewsets.ModelViewSet):
     serializer_class = HealthRecordSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Mở comment: User nào đăng nhập thì chỉ thấy số đo của user đó!
+        # User nào đăng nhập thì chỉ thấy số đo của user đó!
         return HealthRecord.objects.filter(user=self.request.user).order_by('-created_at')
 
 class DeviceViewSet(viewsets.ModelViewSet):
@@ -60,29 +60,88 @@ class DeviceViewSet(viewsets.ModelViewSet):
         return Device.objects.filter(user=self.request.user).order_by('-registered_at')
 
     def perform_create(self, serializer):
-        # Khi thêm cân mới, mặc định nó thuộc về người vừa bấm nút "Thêm"
+        # Khi thêm cân mới, nó thuộc về người vừa bấm nút "Thêm"
         serializer.save(user=self.request.user)
 
-# =======================================================
-# --- 3. API DÀNH CHO PHẦN CỨNG ESP32 ---
-# =======================================================
+
+# --- 2.5 API NHẬN VÀ LƯU DỮ LIỆU TỪ MÃ QR ---
+
+class ClaimMeasurementView(APIView):
+    # Chỉ user đã đăng nhập mới được lưu dữ liệu
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, token):
+        # 1. Tìm phiên đo lường tạm thời theo token từ mã QR
+        session = get_object_or_404(MeasurementSession, token=token, is_saved=False)
+        
+        # 2. Tìm kiếm thiết bị (Device) dựa trên mac_address để link vào bản ghi
+        device = Device.objects.filter(mac_address=session.mac_address).first()
+        
+        # 3. Tạo bản ghi chính thức vào bảng HealthRecord cho User này với đầy đủ 6 thông số
+        record = HealthRecord.objects.create(
+            user=request.user,
+            device=device,
+            weight=session.weight,
+            height=session.height,
+            bmi=session.bmi,
+            temperature=session.temperature,
+            heart_rate=session.heart_rate,
+            spo2=session.spo2,
+        )
+        
+        # 4. Đánh dấu phiên QR này đã được sử dụng (chống quét lại lần 2)
+        session.is_saved = True
+        session.user = request.user
+        session.save()
+        
+        # 5. Trả kết quả về cho React để in ra file PDF
+        return Response({
+            "message": "Dữ liệu đã được lưu thành công vào hồ sơ!",
+            "data": {
+                "weight": record.weight,
+                "height": record.height,
+                "bmi": record.bmi,
+                "temperature": record.temperature,
+                "heart_rate": record.heart_rate,
+                "spo2": record.spo2,
+                "date": record.created_at.strftime("%d/%m/%Y %H:%M")
+            }
+        }, status=status.HTTP_200_OK)
+
+
+# --- 3. API PHẦN CỨNG ESP32 (TẠO MÃ QR) ---
 
 class HardwareUploadView(APIView):
-    permission_classes = [permissions.AllowAny] # ESP32 không có Token
+    # Cho phép ESP32 gửi dữ liệu mà không cần đăng nhập
+    permission_classes = [permissions.AllowAny] 
 
     def post(self, request):
-        serializer = DeviceUploadSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()   # Đối chiếu kiểm dữ liệu với DeviceUploadSerializer,
-                                # nếu hợp lệ thì lưu vào DB
-            return Response({"message": "Data received and saved successfully!"}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data
+        
+        # 1. Khởi tạo một bản ghi tạm thời trong MeasurementSession với đầy đủ 6 thông số
+        try:
+            session = MeasurementSession.objects.create(
+                weight=data.get('weight'),
+                height=data.get('height'),
+                bmi=data.get('bmi'),
+                temperature=data.get('temperature'),
+                heart_rate=data.get('heart_rate'),
+                spo2=data.get('spo2'),
+                mac_address=data.get('mac_address')
+            )
+            
+            # 2. Tạo đường link chứa Token để ESP32 vẽ QR
+            # LƯU Ý: Khi deploy thật, nhớ đổi http://localhost:3000 thành Domain của Web-app
+            qr_url = f"http://localhost:3000/claim-record/{session.token}/"            
+            return Response({"qr_url": qr_url}, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+# --- 4. API QUẢN TRỊ VIÊN ---
 
-# =======================================================
-# --- 4. API DÀNH RIÊNG CHO QUẢN TRỊ VIÊN ---
-# =======================================================
-
-# API 1: Lấy số liệu thống kê cho Dashboard có lọc theo thiết bị
+# Lấy số liệu thống kê cho Dashboard có lọc theo thiết bị
 class AdminStatsView(APIView):
     permission_classes = [IsAdminUser]
 
@@ -90,7 +149,7 @@ class AdminStatsView(APIView):
         today = timezone.now().date()
         device_id = request.GET.get('device_id', 'all')
         
-        # Lọc dữ liệu đo lường theo thiết bị nếu Admin có chọn
+        # Lọc dữ liệu đo lường theo thiết bị hoặc lấy tất cả thiết bị
         if device_id != 'all':
             records_qs = HealthRecord.objects.filter(device_id=device_id)
         else:
@@ -100,9 +159,9 @@ class AdminStatsView(APIView):
         total_users = User.objects.count()
         active_devices = Device.objects.filter(is_active=True).count()
         offline_devices = Device.objects.filter(is_active=False).count()
-        today_records = records_qs.filter(created_at__date=today).count() # Đếm theo bộ lọc
+        today_records = records_qs.filter(created_at__date=today).count()
 
-        # 2. Tính toán biểu đồ 7 ngày qua theo bộ lọc
+        # 2. Tính toán biểu đồ 7 ngày theo bộ lọc thiết bị
         chart_data = []
         for i in range(6, -1, -1):
             d = today - timedelta(days=i)
@@ -118,6 +177,7 @@ class AdminStatsView(APIView):
             },
             "chart": chart_data
         })
+    
 # Lấy danh sách Người Dùng
 class AdminUserListView(APIView):
     permission_classes = [IsAdminUser]
@@ -148,7 +208,7 @@ class ToggleUserStatusView(APIView):
     def post(self, request, user_id):
         try:
             user = User.objects.get(id=user_id)
-            if not user.is_superuser: # Không cho phép Admin tự khóa mình
+            if not user.is_superuser: # Không cho Admin tự khóa mình
                 user.is_active = not user.is_active
                 user.save()
             return Response({"status": "success", "is_active": user.is_active})

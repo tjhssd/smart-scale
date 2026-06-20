@@ -4,9 +4,13 @@ from .views import (
     HealthRecordViewSet, 
     DeviceViewSet, 
     HardwareUploadView, 
+    ClaimMeasurementView,  # Import thêm class xử lý QR Code
     RegisterView, 
     CustomLoginView,
-    AdminStatsView, AdminUserListView, AdminDeviceListView, ToggleUserStatusView
+    AdminStatsView, 
+    AdminUserListView, 
+    AdminDeviceListView, 
+    ToggleUserStatusView
 )
 
 # Router tự động tạo link GET/POST/PUT/DELETE cho ViewSet
@@ -15,15 +19,18 @@ router.register(r'records', HealthRecordViewSet, basename='healthrecord')
 router.register(r'devices', DeviceViewSet, basename='device')
 
 urlpatterns = [
-    # Nhóm API cho React kéo dữ liệu
+    # --- Nhóm API cho React kéo dữ liệu ---
     path('', include(router.urls)),
     
-    # Nhóm API cho Đăng nhập/Đăng ký
+    # --- Nhóm API cho Đăng nhập/Đăng ký ---
     path('login/', CustomLoginView.as_view(), name='login'),
     path('register/', RegisterView.as_view(), name='register'),
     
+    # --- Nhóm API cho thiết bị ESP32 và Quét QR ---
     path('hardware-upload/', HardwareUploadView.as_view(), name='hardware-upload'),
+    path('claim-record/<uuid:token>/', ClaimMeasurementView.as_view(), name='claim-record'),
 
+    # --- Nhóm API cho Quản trị viên (Admin) ---
     path('admin-api/stats/', AdminStatsView.as_view()),
     path('admin-api/users/', AdminUserListView.as_view()),
     path('admin-api/devices/', AdminDeviceListView.as_view()),
