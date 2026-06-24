@@ -8,8 +8,6 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
-
-# Import models mới 
 from .models import HealthRecord, Device, MeasurementSession
 from .serializers import (
     HealthRecordSerializer, 
@@ -116,6 +114,14 @@ class HardwareUploadView(APIView):
     permission_classes = [permissions.AllowAny] 
 
     def post(self, request):
+        
+        # Xóa các phiên đo lường tạm thời chưa được lưu mà đã quá 10 phút
+        expiration_time = timezone.now() - timedelta(minutes=10)
+        MeasurementSession.objects.filter(
+            is_saved=False, 
+            created_at__lt=expiration_time
+        ).delete()
+
         data = request.data
         
         # 1. Khởi tạo một bản ghi tạm thời trong MeasurementSession với đầy đủ 6 thông số
@@ -132,7 +138,7 @@ class HardwareUploadView(APIView):
             
             # 2. Tạo đường link chứa Token để ESP32 vẽ QR
             # LƯU Ý: Khi deploy thật, nhớ đổi http://localhost:3000 thành Domain của Web-app
-            qr_url = f"http://localhost:3000/claim-record/{session.token}/"            
+            qr_url = f"http://localhost:3000/claim-record/{session.token}/"      
             return Response({"qr_url": qr_url}, status=status.HTTP_201_CREATED)
             
         except Exception as e:
