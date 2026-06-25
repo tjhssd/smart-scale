@@ -8,12 +8,19 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from datetime import timedelta
-from .models import HealthRecord, Device, MeasurementSession
+from .models import HealthRecord, Device, MeasurementSession, UserProfile
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+
 from .serializers import (
     HealthRecordSerializer, 
     DeviceSerializer, 
     DeviceUploadSerializer, 
-    RegisterSerializer
+    RegisterSerializer,
+    UserProfileSerializer,
+    ChangePasswordSerializer
 )
 
 
@@ -37,7 +44,46 @@ class CustomLoginView(ObtainAuthToken):
             'username': user.username,
             'is_admin': user.is_superuser or user.is_staff
         })
-    
+
+
+# --- 1.5 QUẢN LÝ HỒ SƠ & ĐỔI MẬT KHẨU ---
+
+class UserProfileView(APIView):
+    # Bắt buộc phải truyền Token đăng nhập trong Header
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # Lấy profile của chính user đang gọi API
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        serializer = UserProfileSerializer(profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        # partial=True cho phép cập nhật từng trường lẻ tẻ
+        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePasswordView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            user = request.user
+            # Kiểm tra mật khẩu cũ có đúng không
+            if not user.check_password(serializer.data.get("oldPassword")):
+                return Response({"error": "Mật khẩu hiện tại không chính xác!"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Đặt mật khẩu mới
+            user.set_password(serializer.data.get("newPassword"))
+            user.save()
+            return Response({"message": "Đổi mật khẩu thành công!"}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 # --- 2. API GIAO DIỆN REACT ---
 
@@ -220,3 +266,47 @@ class ToggleUserStatusView(APIView):
             return Response({"status": "success", "is_active": user.is_active})
         except User.DoesNotExist:
             return Response({"error": "Không tìm thấy user"}, status=404)
+        
+class PasswordResetRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        user = User.objects.filter(email=email).first()
+        
+        if user:
+            # Mã hóa ID người dùng và tạo Token 1 lần
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            
+            # Tạo link dẫn về Frontend React (Trang đặt lại mật khẩu)
+            reset_url = f"http://localhost:3000/reset-password/{uidb64}/{token}/"
+            
+            # Gửi Email (Nội dung được in ra Terminal của Django)
+            send_mail(
+                subject='[SmartScale] Đặt lại mật khẩu của bạn',
+                message=f'Chào {user.username},\n\nBạn đã yêu cầu đặt lại mật khẩu. Vui lòng click vào link dưới đây để đổi mật khẩu mới:\n{reset_url}\n\nNếu bạn không yêu cầu, vui lòng bỏ qua email này.',
+                from_email='noreply@smartscale.com',
+                recipient_list=[user.email],
+            )
+        
+        return Response({"message": "Nếu email hợp lệ, hướng dẫn đã được gửi tới hòm thư của bạn."}, status=status.HTTP_200_OK)
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, uidb64, token):
+        try:
+            # Giải mã lấy ID người dùng
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            new_password = request.data.get('new_password')
+            user.set_password(new_password)
+            user.save()
+            return Response({"message": "Mật khẩu đã được đặt lại thành công!"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Đường dẫn đặt lại không hợp lệ hoặc đã hết hạn!"}, status=status.HTTP_400_BAD_REQUEST)

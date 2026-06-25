@@ -1,16 +1,20 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    ChangePasswordView,
     HealthRecordViewSet, 
     DeviceViewSet, 
     HardwareUploadView, 
-    ClaimMeasurementView,  # Import thêm class xử lý QR Code
+    ClaimMeasurementView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
     RegisterView, 
     CustomLoginView,
     AdminStatsView, 
     AdminUserListView, 
     AdminDeviceListView, 
-    ToggleUserStatusView
+    ToggleUserStatusView,
+    UserProfileView
 )
 
 # Router tự động tạo link GET/POST/PUT/DELETE cho ViewSet
@@ -35,4 +39,12 @@ urlpatterns = [
     path('admin-api/users/', AdminUserListView.as_view()),
     path('admin-api/devices/', AdminDeviceListView.as_view()),
     path('admin-api/users/<int:user_id>/toggle/', ToggleUserStatusView.as_view()),
+    path('admin/stats/', AdminStatsView.as_view(), name='admin-stats'),
+    path('admin/users/', AdminUserListView.as_view(), name='admin-users'),
+    path('admin/devices/', AdminDeviceListView.as_view(), name='admin-devices'),
+    path('admin/users/<int:user_id>/toggle/', ToggleUserStatusView.as_view(), name='admin-toggle-user'),
+    path('profile/', UserProfileView.as_view(), name='user-profile'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset'),
+    path('password-reset-confirm/<str:uidb64>/<str:token>/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
 ]

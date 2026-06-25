@@ -43,6 +43,8 @@ body { background: var(--bg-main); color: var(--text-main); }
 .nav-item {
   display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px;
   cursor: pointer; transition: 0.2s; color: #64748b; margin-bottom: 5px;
+  text-decoration: none !important;
+  color: inherit;
 }
 .nav-item:hover, .nav-item.active { background: #f1f5f9; color: var(--primary); }
 .nav-item.logout { margin-top: auto; color: #ef4444; }

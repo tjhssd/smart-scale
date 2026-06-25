@@ -1,29 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 
 const ClaimRecord = () => {
-    const { token } = useParams(); // Lấy mã token từ thanh địa chỉ URL (do quét QR)
+    const { token } = useParams();
     const navigate = useNavigate();
     const [recordInfo, setRecordInfo] = useState(null);
     const [status, setStatus] = useState('Đang đồng bộ dữ liệu với cân thông minh...');
     const [error, setError] = useState(false);
+    
+    // THÊM: Sử dụng useRef làm "cờ đánh dấu" chống gọi API 2 lần trong Strict Mode
+    const hasClaimed = useRef(false);
 
     useEffect(() => {
         const claimData = async () => {
+            // NẾU ĐÃ GỌI API RỒI THÌ LẬP TỨC DỪNG LẠI, KHÔNG GỌI LẦN 2
+            if (hasClaimed.current) return; 
+            hasClaimed.current = true; // Đánh dấu là đã bắt đầu gọi API
+
             try {
-                // Lấy token đăng nhập của User từ localStorage
                 const userToken = localStorage.getItem('token'); 
                 
                 if (!userToken) {
-                    // Nếu chưa đăng nhập, lưu lại URL hiện tại và chuyển hướng đến trang Login
                     localStorage.setItem('redirectAfterLogin', `/claim-record/${token}`);
                     navigate('/login');
                     return;
                 }
 
-                // Gọi API sang Django để claim dữ liệu
                 const response = await axios.post(
                     `http://127.0.0.1:8000/api/claim-record/${token}/`, 
                     {}, 
@@ -45,24 +49,20 @@ const ClaimRecord = () => {
         claimData();
     }, [token, navigate]);
 
-    // Hàm tạo lời khuyên tự động cực kỳ chuyên nghiệp dựa trên 6 thông số
+    // Hàm tạo lời khuyên tự động dựa trên 6 thông số
     const generateHealthAdvice = (data) => {
         let advice = [];
 
-        // Đánh giá BMI
         if (data.bmi < 18.5) advice.push("🔹 BMI: Thể trạng thiếu cân. Bạn cần tăng cường khẩu phần ăn giàu protein và tinh bột phức hợp.");
         else if (data.bmi >= 18.5 && data.bmi <= 24.9) advice.push("🔹 BMI: Thể trạng bình thường. Rất tuyệt vời, hãy duy trì lối sống hiện tại!");
         else advice.push("🔹 BMI: Có dấu hiệu thừa cân/béo phì. Cần kiểm soát lượng calo nạp vào và tập luyện cardio ít nhất 30 phút/ngày.");
 
-        // Đánh giá Thân nhiệt
         if (data.temperature > 37.5) advice.push("⚠️ Thân nhiệt: Đang có dấu hiệu sốt nhẹ đến cao. Hãy uống nhiều nước và theo dõi thêm.");
         else if (data.temperature < 35.5) advice.push("⚠️ Thân nhiệt: Thấp hơn mức bình thường. Hãy giữ ấm cơ thể.");
 
-        // Đánh giá Nhịp tim
         if (data.heart_rate > 100) advice.push("⚠️ Nhịp tim: Đang đập nhanh (Tachycardia). Hãy ngồi nghỉ ngơi thư giãn từ 5-10 phút.");
         else if (data.heart_rate < 60) advice.push("🔹 Nhịp tim: Chậm (Bradycardia) - Thường thấy ở người chơi thể thao cường độ cao.");
 
-        // Đánh giá SpO2
         if (data.spo2 < 95) advice.push("🚨 SpO2: Nồng độ oxy trong máu thấp. Cần hít thở sâu, mở cửa thông thoáng. Nếu kèm khó thở, hãy đến cơ sở y tế.");
         else advice.push("🔹 SpO2: Lượng oxy trong máu rất tốt.");
 
@@ -174,7 +174,6 @@ const ClaimRecord = () => {
                 </div>
             </div>
 
-            {/* Nút bấm tải PDF nằm ngoài vùng in ấn */}
             <button 
                 onClick={handleExportPDF} 
                 style={{ 
