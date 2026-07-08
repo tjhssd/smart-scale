@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'biometrics',
+    'core',
 ]
 
 REST_FRAMEWORK = {

@@ -1,7 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import html2pdf from 'html2pdf.js';
+import html2pdf from 'html2pdf.js/dist/html2pdf.min.js';
+
+// BIẾN TOÀN CỤC CHỐNG GỌI API 2 LẦN
+const processedTokens = new Set(); 
 
 const ClaimRecord = () => {
     const { token } = useParams();
@@ -10,24 +13,23 @@ const ClaimRecord = () => {
     const [status, setStatus] = useState('Đang đồng bộ dữ liệu với cân thông minh...');
     const [error, setError] = useState(false);
     
-    // THÊM: Sử dụng useRef làm "cờ đánh dấu" chống gọi API 2 lần trong Strict Mode
-    const hasClaimed = useRef(false);
-
     useEffect(() => {
         const claimData = async () => {
-            // NẾU ĐÃ GỌI API RỒI THÌ LẬP TỨC DỪNG LẠI, KHÔNG GỌI LẦN 2
-            if (hasClaimed.current) return; 
-            hasClaimed.current = true; // Đánh dấu là đã bắt đầu gọi API
+            const userToken = localStorage.getItem('token'); 
+            
+            if (!userToken) {
+                localStorage.setItem('redirectAfterLogin', `/claim-record/${token}`);
+                navigate('/login');
+                return; 
+            }
+
+            if (processedTokens.has(token)) {
+                return;
+            }
+            
+            processedTokens.add(token);
 
             try {
-                const userToken = localStorage.getItem('token'); 
-                
-                if (!userToken) {
-                    localStorage.setItem('redirectAfterLogin', `/claim-record/${token}`);
-                    navigate('/login');
-                    return;
-                }
-
                 const response = await axios.post(
                     `http://127.0.0.1:8000/api/claim-record/${token}/`, 
                     {}, 
@@ -36,12 +38,17 @@ const ClaimRecord = () => {
                 
                 setRecordInfo(response.data.data);
                 setStatus('Thành công!');
+                localStorage.removeItem('redirectAfterLogin');
+
             } catch (err) {
                 setError(true);
+                
                 if (err.response && err.response.status === 404) {
                     setStatus('Mã QR không hợp lệ, đã hết hạn hoặc đã được người khác lưu.');
+                } else if (err.response && err.response.status === 400) {
+                     setStatus('Lỗi xác thực: ' + (err.response.data?.message || 'Mã QR đã được sử dụng.'));
                 } else {
-                    setStatus('Đã xảy ra lỗi khi kết nối với máy chủ.');
+                    setStatus('Đã xảy ra lỗi khi kết nối với máy chủ Backend.');
                 }
             }
         };
@@ -49,10 +56,9 @@ const ClaimRecord = () => {
         claimData();
     }, [token, navigate]);
 
-    // Hàm tạo lời khuyên tự động dựa trên 6 thông số
+    // Hàm tạo lời khuyên tự động
     const generateHealthAdvice = (data) => {
         let advice = [];
-
         if (data.bmi < 18.5) advice.push("🔹 BMI: Thể trạng thiếu cân. Bạn cần tăng cường khẩu phần ăn giàu protein và tinh bột phức hợp.");
         else if (data.bmi >= 18.5 && data.bmi <= 24.9) advice.push("🔹 BMI: Thể trạng bình thường. Rất tuyệt vời, hãy duy trì lối sống hiện tại!");
         else advice.push("🔹 BMI: Có dấu hiệu thừa cân/béo phì. Cần kiểm soát lượng calo nạp vào và tập luyện cardio ít nhất 30 phút/ngày.");
@@ -82,19 +88,54 @@ const ClaimRecord = () => {
         html2pdf().set(opt).from(element).save();
     };
 
-    // Giao diện khi đang tải hoặc lỗi
+    // --- COMPONENT NÚT ĐIỀU HƯỚNG DÙNG CHUNG ---
+    const renderNavigationButton = () => {
+        const isAuth = localStorage.getItem('token');
+        return (
+            <button 
+                onClick={() => navigate(isAuth ? '/' : '/login')} // Đổi '/' thành '/dashboard' nếu trang chủ của bạn tên là dashboard
+                style={{ 
+                    marginTop: '15px', 
+                    width: '100%', 
+                    padding: '16px', 
+                    backgroundColor: '#6c757d', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    fontSize: '18px', 
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 6px rgba(108, 117, 125, 0.2)',
+                    transition: '0.3s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#5a6268'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#6c757d'}
+            >
+                {isAuth ? '🏠 Trở về Trang chủ' : '🔑 Đi đến Đăng nhập'}
+            </button>
+        );
+    };
+
+    // 1. Giao diện khi đang tải hoặc BỊ LỖI (Mã QR đã quét/Hết hạn)
     if (!recordInfo) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
-                <h3 style={{ color: error ? 'red' : '#0056b3' }}>{status}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '100px', padding: '0 20px' }}>
+                <h3 style={{ color: error ? '#dc3545' : '#0056b3', textAlign: 'center', marginBottom: '30px' }}>
+                    {status}
+                </h3>
+                {/* Chỉ hiện nút khi đã xử lý xong và có lỗi (Không hiện lúc đang Loading) */}
+                {error && (
+                    <div style={{ width: '100%', maxWidth: '400px' }}>
+                        {renderNavigationButton()}
+                    </div>
+                )}
             </div>
         );
     }
 
-    // Giao diện thẻ Báo cáo sức khỏe (Report Card)
+    // 2. Giao diện thẻ Báo cáo sức khỏe khi THÀNH CÔNG
     return (
         <div style={{ maxWidth: '650px', margin: '40px auto', fontFamily: 'Arial, sans-serif' }}>
-            {/* Vùng chứa nội dung sẽ được in ra PDF */}
             <div 
                 id="health-report-card" 
                 style={{ 
@@ -111,7 +152,7 @@ const ClaimRecord = () => {
                     </h2>
                     <p style={{ color: '#7f8c8d', margin: 0 }}>Hệ thống Cân điện tử thông minh IoT</p>
                     <p style={{ color: '#7f8c8d', margin: '5px 0 0 0', fontSize: '14px' }}>
-                        Thời gian đo: <strong>{recordInfo.date}</strong>
+                        Thời gian đo: <strong>{recordInfo.date || new Date().toLocaleString('vi-VN')}</strong>
                     </p>
                 </div>
                 
@@ -168,33 +209,34 @@ const ClaimRecord = () => {
                             {line}
                         </p>
                     ))}
-                    <p style={{ margin: '15px 0 0 0', fontSize: '13px', color: '#999', fontStyle: 'italic' }}>
-                        *Lưu ý: Các chỉ số và lời khuyên trên chỉ mang tính chất tham khảo, không thay thế cho chẩn đoán y khoa chuyên nghiệp.
-                    </p>
                 </div>
             </div>
 
-            <button 
-                onClick={handleExportPDF} 
-                style={{ 
-                    marginTop: '25px', 
-                    width: '100%', 
-                    padding: '16px', 
-                    backgroundColor: '#198754', 
-                    color: 'white', 
-                    border: 'none', 
-                    borderRadius: '8px', 
-                    fontSize: '18px', 
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 6px rgba(25, 135, 84, 0.2)',
-                    transition: '0.3s'
-                }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#157347'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#198754'}
-            >
-                📥 Tải xuống Phiếu kết quả (PDF)
-            </button>
+            {/* Các nút chức năng ở dưới cùng */}
+            <div style={{ marginTop: '25px' }}>
+                <button 
+                    onClick={handleExportPDF} 
+                    style={{ 
+                        width: '100%', 
+                        padding: '16px', 
+                        backgroundColor: '#198754', 
+                        color: 'white', 
+                        border: 'none', 
+                        borderRadius: '8px', 
+                        fontSize: '18px', 
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 6px rgba(25, 135, 84, 0.2)',
+                        transition: '0.3s'
+                    }}
+                    onMouseOver={(e) => e.target.style.backgroundColor = '#157347'}
+                    onMouseOut={(e) => e.target.style.backgroundColor = '#198754'}
+                >
+                    📥 Tải xuống Phiếu kết quả (PDF)
+                </button>
+                
+                {renderNavigationButton()}
+            </div>
         </div>
     );
 };

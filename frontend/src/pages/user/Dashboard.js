@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Thermometer, Activity, Droplets, Ruler, Scale } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import StatCard from '../../components/StatCard';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -11,14 +11,27 @@ export default function Dashboard() {
     weight: 0, heart_rate: 0, spo2: 0, temperature: 0, height: 0, bmi: 0 
   });
   const [historyList, setHistoryList] = useState([]);
+  const [targetWeight, setTargetWeight] = useState();
 
   const fetchData = async () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     try {
+      // 1. Lấy dữ liệu hồ sơ để có cân nặng mục tiêu
+      const profileRes = await axios.get(`${API_BASE_URL}/api/profile/`, {
+        headers: { 'Authorization': `Token ${token}` }
+      });
+
+      const tw = profileRes.data.targetWeight ?? profileRes.data.target_weight;
+      if (tw) {
+        setTargetWeight(Number(tw));
+      }
+
+      // 2. Lấy lịch sử đo
       const res = await axios.get(`${API_BASE_URL}/api/records/`, {
         headers: { 'Authorization': `Token ${token}` }
       });
+      
       if (res.data.length > 0) {
         const processed = res.data.map(item => ({
           ...item,
@@ -46,6 +59,8 @@ export default function Dashboard() {
     return "Thừa cân";
   };
 
+  const chartData = [...historyList].reverse().slice(-10);
+
   return (
     <div className="page-content anim-fade">
       <h2 className="section-title">CHỈ SỐ SINH HIỆU</h2>
@@ -69,14 +84,23 @@ export default function Dashboard() {
       <h2 className="section-title">XU HƯỚNG THEO DÕI</h2>
       <div className="chart-section">
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={[...historyList].reverse().slice(-10)}>
+          <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis dataKey="timeLabel" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
-            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} />
+            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10}} domain={['auto', 'auto']} />
             <Tooltip contentStyle={{borderRadius:'10px', border:'none', boxShadow:'0 5px 15px rgba(0,0,0,0.1)'}} />
             <Legend verticalAlign="top" align="right" iconType="circle" />
+            
             <Line type="monotone" dataKey="bmi" stroke="#6366f1" strokeWidth={4} name="BMI" dot={{r:4, fill:'#6366f1'}} />
             <Line type="monotone" dataKey="weight" stroke="#10b981" strokeWidth={4} name="Cân nặng" dot={{r:4, fill:'#10b981'}} />
+
+            <ReferenceLine
+              y={targetWeight}
+              stroke="#ff7300"
+              strokeDasharray="5 5"
+              strokeWidth={2}
+              label={{ value: `Mục tiêu: ${targetWeight}kg`, position: 'right', fill: '#ff7300', fontSize: 11 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
