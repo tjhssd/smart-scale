@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import html2pdf from 'html2pdf.js/dist/html2pdf.min.js';
 
-// BIẾN TOÀN CỤC CHỐNG GỌI API 2 LẦN
 const processedTokens = new Set(); 
 
 const ClaimRecord = () => {
@@ -93,7 +92,7 @@ const ClaimRecord = () => {
         const isAuth = localStorage.getItem('token');
         return (
             <button 
-                onClick={() => navigate(isAuth ? '/' : '/login')} // Đổi '/' thành '/dashboard' nếu trang chủ của bạn tên là dashboard
+                onClick={() => navigate(isAuth ? '/' : '/login')} 
                 style={{ 
                     marginTop: '15px', 
                     width: '100%', 
@@ -116,14 +115,14 @@ const ClaimRecord = () => {
         );
     };
 
-    // 1. Giao diện khi đang tải hoặc BỊ LỖI (Mã QR đã quét/Hết hạn)
+    // 1. Giao diện khi đang tải hoặc BỊ LỖI
     if (!recordInfo) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '100px', padding: '0 20px' }}>
                 <h3 style={{ color: error ? '#dc3545' : '#0056b3', textAlign: 'center', marginBottom: '30px' }}>
                     {status}
                 </h3>
-                {/* Chỉ hiện nút khi đã xử lý xong và có lỗi (Không hiện lúc đang Loading) */}
+                {/* Chỉ hiện nút khi đã xử lý xong và có lỗi */}
                 {error && (
                     <div style={{ width: '100%', maxWidth: '400px' }}>
                         {renderNavigationButton()}
@@ -212,7 +211,6 @@ const ClaimRecord = () => {
                 </div>
             </div>
 
-            {/* Các nút chức năng ở dưới cùng */}
             <div style={{ marginTop: '25px' }}>
                 <button 
                     onClick={handleExportPDF} 

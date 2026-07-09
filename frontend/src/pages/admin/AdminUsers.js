@@ -16,7 +16,7 @@ export default function AdminUsers() {
   const toggleUserStatus = async (id, isSuperuser) => {
     if (isSuperuser) return alert("Không thể khóa tài khoản Admin!");
     await axios.post(`http://127.0.0.1:8000/api/admin-api/users/${id}/toggle/`, {}, { headers: { Authorization: `Token ${token}` } });
-    fetchUsers(); // Cập nhật lại bảng
+    fetchUsers();
   };
 
   return (

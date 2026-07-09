@@ -8,7 +8,7 @@ export default function History() {
   
   // --- STATES PHÂN TRANG ---
   const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10; // Số dòng muốn hiển thị trên 1 trang
+  const recordsPerPage = 10;
 
   useEffect(() => {
     const fetchHistory = async () => {

@@ -5,7 +5,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 const API_BASE_URL = 'http://127.0.0.1:8000';
 
 export default function ResetPassword() {
-  const { uidb64, token } = useParams(); // Lấy mã bí mật từ đường dẫn URL
+  const { uidb64, token } = useParams();
   const navigate = useNavigate();
   const [passwords, setPasswords] = useState({ newPassword: '', confirm: '' });
   const [msg, setMsg] = useState({ type: '', text: '' });

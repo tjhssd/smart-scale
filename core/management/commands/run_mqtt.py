@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = 'Khởi chạy Background Worker lắng nghe MQTT'
 
     def handle(self, *args, **options):
-        # Cấu hình MQTT Broker (Khớp với code C++ của ESP32)
+        # Cấu hình MQTT Broker
         MQTT_BROKER = "broker.hivemq.com"
         MQTT_PORT = 1883
         TOPIC_RECEIVE = "smart_scale/kiosk_01/data"
@@ -18,7 +18,6 @@ class Command(BaseCommand):
         def on_connect(client, userdata, flags, rc):
             if rc == 0:
                 self.stdout.write(self.style.SUCCESS(f" Đã kết nối MQTT Broker! (Mã lỗi: {rc})"))
-                # Ngay khi kết nối, đăng ký lắng nghe Topic của ESP32
                 client.subscribe(TOPIC_RECEIVE)
                 self.stdout.write(f" Đang lấy dữ liệu tại Topic: {TOPIC_RECEIVE}")
             else:
@@ -40,7 +39,7 @@ class Command(BaseCommand):
                     height_m = height / 100.0  # Đổi cm sang mét
                     bmi = round(weight / (height_m * height_m), 1)
                 
-                # 2. Xử lý Logic Database (Sinh UUID và lưu phiên đo lường)
+                # 2. Xử lý Logic Database
                 session_uuid = uuid.uuid4()
                 
                 MeasurementSession.objects.create(
@@ -82,7 +81,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING("⏳ Đang kết nối tới MQTT Broker..."))
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
-        # Chạy vòng lặp vĩnh cửu (Blocking) để giữ chương trình luôn thức
+        # Chạy vòng lặp vĩnh cửu để giữ chương trình luôn thức
         try:
             client.loop_forever()
         except KeyboardInterrupt:

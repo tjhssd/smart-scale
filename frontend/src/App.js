@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
-// Import Layout chung (Sidebar + Header)
+// Import Layout chung
 import Layout from './components/Layout';
 
 // Import Trang Auth & QR
@@ -56,7 +56,6 @@ function App() {
             <Layout />
           </ProtectedRoute>
         }>
-          {/* Default redirect */}
           <Route index element={<Navigate to="/dashboard" replace />} />
 
           {/* USER ROUTES */}

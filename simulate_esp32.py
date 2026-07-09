@@ -5,7 +5,7 @@ import socket
 import qrcode
 
 def get_local_ip():
-    """Logic 1: Tự động lấy địa chỉ IP LAN của máy tính đang chạy code"""
+    """Tự động lấy địa chỉ IP LAN của máy tính đang chạy code"""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # Kết nối ảo ra một DNS ngoài mạng để ép máy tính lộ IP thật trong LAN
@@ -48,10 +48,9 @@ def simulate_hardware_and_show_qr():
             original_qr_url = response.json().get('qr_url')
             
             # Logic 2: Ép URL này sử dụng IP LAN thay vì 'localhost' 
-            # (Rất quan trọng để điện thoại có thể truy cập được Web React trên máy tính)
             final_qr_url = original_qr_url.replace("localhost", LOCAL_IP).replace("127.0.0.1", LOCAL_IP)
             
-            print("\n[THÀNH CÔNG] Backend đã ghi nhận. Đang tiến hành vẽ ảnh QR...")
+            print("\nĐang tiến hành vẽ ảnh QR...")
             print(f"Link nạp vào QR: {final_qr_url}")
             
             # Logic 3: Vẽ và hiển thị ảnh QR Code
@@ -75,8 +74,6 @@ def simulate_hardware_and_show_qr():
             
     except requests.exceptions.ConnectionError:
         print(f"\n[LỖI MẠNG] Không thể kết nối tới {API_URL}.")
-        print("LƯU Ý QUAN TRỌNG: Bạn phải chạy Backend Django bằng lệnh sau để điện thoại quét được:")
-        print("python manage.py runserver 0.0.0.0:8000")
 
 if __name__ == "__main__":
     simulate_hardware_and_show_qr()
