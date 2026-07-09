@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-
-const API_BASE_URL = 'http://127.0.0.1:8000';
-
+import { API_BASE_URL } from '../config';
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState({ type: '', text: '' });

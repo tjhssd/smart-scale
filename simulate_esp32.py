@@ -1,14 +1,19 @@
-import requests
+import paho.mqtt.client as mqtt
+import json
 import random
 import time
 import socket
 import qrcode
 
+# ================= CẤU HÌNH MQTT BROKER =================
+BROKER = "broker.hivemq.com"
+PORT = 1883
+TOPIC_PUB = "smart_scale/kiosk_01/data"
+TOPIC_SUB = "smart_scale/kiosk_01/qr_response" 
+
 def get_local_ip():
-    """Tự động lấy địa chỉ IP LAN của máy tính đang chạy code"""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # Kết nối ảo ra một DNS ngoài mạng để ép máy tính lộ IP thật trong LAN
         s.connect(("8.8.8.8", 80)) 
         ip = s.getsockname()[0]
         s.close()
@@ -16,9 +21,7 @@ def get_local_ip():
     except Exception:
         return "127.0.0.1"
 
-# Tự động gán IP vào URL của Backend
 LOCAL_IP = get_local_ip()
-API_URL = f"http://{LOCAL_IP}:8000/api/hardware-upload/"
 
 def generate_mock_data():
     weight = round(random.uniform(50.0, 85.0), 1)
@@ -33,27 +36,39 @@ def generate_mock_data():
         "mac_address": "AA:BB:CC:DD:EE:FF"
     }
 
-def simulate_hardware_and_show_qr():
-    print("BẮT ĐẦU GIẢ LẬP TRẠM CÂN VÀ TẠO MÃ QR...")
-    time.sleep(1)
-    
-    data = generate_mock_data()
-    print(f"Đang gửi dữ liệu tới API: {API_URL}")
+def on_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print("[+] Kết nối MQTT Broker thành công!")
+        
+        # 1. Đăng ký lắng nghe phản hồi từ Backend ngay khi vừa kết nối
+        client.subscribe(TOPIC_SUB)
+        print(f"[*] Đang lắng nghe phản hồi tại topic: {TOPIC_SUB}")
+        
+        # 2. Tạo dữ liệu sinh hiệu ngẫu nhiên
+        data = generate_mock_data()
+        print("\n[*] Đang đẩy dữ liệu sinh hiệu ngẫu nhiên lên Broker...")
+        print(json.dumps(data, indent=2))
+        
+        # 3. Đẩy dữ liệu (Tương đương với POST)
+        client.publish(TOPIC_PUB, json.dumps(data))
+    else:
+        print(f"[-] Kết nối thất bại, Mã lỗi: {rc}")
+
+def on_message(client, userdata, msg):
+    print("\n[!] NHẬN ĐƯỢC PHẢN HỒI TỪ BACKEND:")
+    data_str = msg.payload.decode("utf-8")
     
     try:
-        response = requests.post(API_URL, json=data, timeout=5)
+        response_data = json.loads(data_str)
+        original_qr_url = response_data.get("qr_url") 
         
-        if response.status_code == 201:
-            # Lấy URL do Backend trả về
-            original_qr_url = response.json().get('qr_url')
-            
-            # Logic 2: Ép URL này sử dụng IP LAN thay vì 'localhost' 
+        if original_qr_url:
             final_qr_url = original_qr_url.replace("localhost", LOCAL_IP).replace("127.0.0.1", LOCAL_IP)
             
-            print("\nĐang tiến hành vẽ ảnh QR...")
-            print(f"Link nạp vào QR: {final_qr_url}")
+            print(f"[+] Link nạp vào QR: {final_qr_url}")
+            print("[*] Đang tiến hành vẽ ảnh QR...")
             
-            # Logic 3: Vẽ và hiển thị ảnh QR Code
+            # Vẽ và hiển thị ảnh QR Code bằng trình xem ảnh mặc định
             qr = qrcode.QRCode(
                 version=1,
                 error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -65,15 +80,33 @@ def simulate_hardware_and_show_qr():
 
             img = qr.make_image(fill_color="black", back_color="white")
             
-            print("\n  DÙNG ĐIỆN THOẠI QUÉT MÃ QR VỪA HIỆN RA TRÊN MÀN HÌNH!")
-            # Lệnh này sẽ tự động gọi trình xem ảnh mặc định của Windows/Mac để bật ảnh lên
+            print("\n📱 DÙNG ĐIỆN THOẠI QUÉT MÃ QR VỪA HIỆN RA TRÊN MÀN HÌNH!")
             img.show() 
             
-        else:
-            print(f"\n[LỖI] Máy chủ từ chối. Mã lỗi: {response.status_code}")
+            # Hoàn thành 1 vòng đời
+            print("[+] Hoàn tất phiên đo. Đang ngắt kết nối...")
+            client.disconnect()
             
-    except requests.exceptions.ConnectionError:
-        print(f"\n[LỖI MẠNG] Không thể kết nối tới {API_URL}.")
+        else:
+            print("[-] Lỗi: Không tìm thấy trường 'qr_url' trong gói tin phản hồi.")
+            client.disconnect()
+            
+    except Exception as e:
+        print(f"[-] Lỗi giải mã phản hồi từ Backend: {e}")
+        client.disconnect()
+
+def simulate_hardware_mqtt():
+    print("=== BẮT ĐẦU GIẢ LẬP TRẠM CÂN BẰNG MQTT ===")
+    
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    try:
+        client.connect(BROKER, PORT, 60)
+        client.loop_forever() 
+    except Exception as e:
+        print(f"[-] Không thể kết nối tới MQTT Broker. Lỗi: {e}")
 
 if __name__ == "__main__":
-    simulate_hardware_and_show_qr()
+    simulate_hardware_mqtt()
