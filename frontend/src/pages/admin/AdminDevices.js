@@ -6,7 +6,7 @@ export default function AdminDevices() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get('http://127.0.0.1:8000/api/admin-api/devices/', { headers: { Authorization: `Token ${token}` } })
+    axios.get(`${API_BASE_URL}/api/admin-api/devices/`, { headers: { Authorization: `Token ${token}` } })
          .then(res => setDevices(res.data));
   }, []);
 

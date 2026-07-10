@@ -11,7 +11,7 @@ export default function AdminOverview() {
   // Lấy danh sách toàn bộ thiết bị để đưa vào Dropdown
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get('http://127.0.0.1:8000/api/admin-api/devices/', { headers: { Authorization: `Token ${token}` } })
+    axios.get(`${API_BASE_URL}/api/admin-api/devices/`, { headers: { Authorization: `Token ${token}` } })
          .then(res => setDevices(res.data))
          .catch(err => console.log(err));
   }, []);
@@ -19,7 +19,7 @@ export default function AdminOverview() {
   // Lấy số liệu thống kê (Tự động gọi lại mỗi khi Admin đổi thiết bị)
   useEffect(() => {
     const token = localStorage.getItem('token');
-    axios.get(`http://127.0.0.1:8000/api/admin-api/stats/?device_id=${selectedDevice}`, { headers: { Authorization: `Token ${token}` } })
+    axios.get(`${API_BASE_URL}/api/admin-api/stats/?device_id=${selectedDevice}`, { headers: { Authorization: `Token ${token}` } })
          .then(res => setStats(res.data))
          .catch(err => console.log(err));
   }, [selectedDevice]);

@@ -2,9 +2,6 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Device, HealthRecord, MeasurementSession, UserProfile
 
-# ==========================================
-# 1. NHÓM TÀI KHOẢN & NGƯỜI DÙNG (Bao gồm Profile & Đổi mật khẩu)
-# ==========================================
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -20,7 +17,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    # Đồng bộ tên biến chính xác với State của React Frontend
     fullName = serializers.CharField(source='full_name', allow_blank=True, required=False)
     defaultHeight = serializers.FloatField(source='default_height', required=False, allow_null=True)
     targetWeight = serializers.FloatField(source='target_weight', required=False, allow_null=True)
@@ -34,22 +30,14 @@ class ChangePasswordSerializer(serializers.Serializer):
     newPassword = serializers.CharField(required=True)
 
 
-# ==========================================
-# 2. NHÓM QUẢN LÝ THIẾT BỊ IOT
-# ==========================================
 class DeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
         fields = '__all__'
-        # Trường user và registered_at sẽ được tự động gán ở Backend, không cho phép React gửi lên
         read_only_fields = ('user', 'registered_at')
 
 
-# ==========================================
-# 3. NHÓM DỮ LIỆU ĐO LƯỜNG CHÍNH THỨC (CHO REACT FRONTEND)
-# ==========================================
 class HealthRecordSerializer(serializers.ModelSerializer):
-    # Trích xuất thêm tên và mã MAC của thiết bị để hiển thị đẹp hơn trên Web
     device_name = serializers.CharField(source='device.name', read_only=True, default="Không xác định")
     device_mac = serializers.CharField(source='device.mac_address', read_only=True, default="N/A")
     
@@ -68,13 +56,7 @@ class HealthRecordSerializer(serializers.ModelSerializer):
         return obj.created_at.strftime("%d/%m/%Y %H:%M")
 
 
-# ==========================================
-# 4. NHÓM DỮ LIỆU TẠM THỜI VÀ KIỂM TRA PHẦN CỨNG
-# ==========================================
 class DeviceUploadSerializer(serializers.Serializer):
-    """
-    Dùng để đảm bảo ESP32 gửi lên dữ liệu hợp lệ (VD: Cân nặng không thể âm)
-    """
     mac_address = serializers.CharField(max_length=50)
     weight = serializers.FloatField()
     height = serializers.FloatField()
@@ -94,11 +76,6 @@ class DeviceUploadSerializer(serializers.Serializer):
         return value
 
 class MeasurementSessionSerializer(serializers.ModelSerializer):
-    """
-    Dùng để trả dữ liệu đo lường tạm thời về cho Frontend hiển thị
-    khi người dùng quét mã QR thành công.
-    """
     class Meta:
         model = MeasurementSession
-        # Ẩn cờ is_saved đi để bảo mật, chỉ trả về các chỉ số sinh tồn
         exclude = ['is_saved']

@@ -34,7 +34,7 @@ urlpatterns = [
     path('hardware-upload/', HardwareUploadView.as_view(), name='hardware-upload'),
     path('claim-record/<uuid:token>/', ClaimMeasurementView.as_view(), name='claim-record'),
 
-    # --- Nhóm API cho Quản trị viên (Admin) ---
+    # --- Nhóm API cho Admin ---
     path('admin-api/stats/', AdminStatsView.as_view()),
     path('admin-api/users/', AdminUserListView.as_view()),
     path('admin-api/devices/', AdminDeviceListView.as_view()),

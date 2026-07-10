@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+import { API_BASE_URL } from '../../config';
 
 export default function History() {
   const [historyList, setHistoryList] = useState([]);
   
-  // --- STATES PHÂN TRANG ---
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
@@ -35,7 +34,6 @@ export default function History() {
   const totalPages = Math.max(1, Math.ceil(historyList.length / recordsPerPage));
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  // Cắt ra mảng dữ liệu chỉ dành riêng cho trang hiện tại
   const currentRecords = historyList.slice(indexOfFirstRecord, indexOfLastRecord);
 
   return (
@@ -50,7 +48,6 @@ export default function History() {
             {currentRecords.length === 0 ? (
               <tr><td colSpan="7" style={{textAlign: 'center', padding: '20px'}}>Chưa có dữ liệu</td></tr>
             ) : (
-              // Map qua currentRecords thay vì historyList
               currentRecords.map((item, idx) => (
                 <tr key={idx}>
                   <td><span className="device-badge">{item.device_name || 'Không rõ'}</span></td>

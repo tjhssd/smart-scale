@@ -43,14 +43,14 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* PUBLIC ROUTES (Không cần đăng nhập) */}
+        {/* PUBLIC ROUTES */}
         <Route path="/login" element={<Login />} />
         <Route path="/claim-record/:token" element={<ClaimRecord />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
 
-        {/* PRIVATE ROUTES (Cần đăng nhập - Được bọc trong Layout có Sidebar) */}
+        {/* PRIVATE ROUTES */}
         <Route path="/" element={
           <ProtectedRoute>
             <Layout />

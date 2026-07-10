@@ -7,7 +7,7 @@ export default function AdminUsers() {
   const token = localStorage.getItem('token');
 
   const fetchUsers = () => {
-    axios.get('http://127.0.0.1:8000/api/admin-api/users/', { headers: { Authorization: `Token ${token}` } })
+    axios.get(`${API_BASE_URL}/api/admin-api/users/`, { headers: { Authorization: `Token ${token}` } })
          .then(res => setUsers(res.data));
   };
 
@@ -15,7 +15,7 @@ export default function AdminUsers() {
 
   const toggleUserStatus = async (id, isSuperuser) => {
     if (isSuperuser) return alert("Không thể khóa tài khoản Admin!");
-    await axios.post(`http://127.0.0.1:8000/api/admin-api/users/${id}/toggle/`, {}, { headers: { Authorization: `Token ${token}` } });
+    await axios.post(`${API_BASE_URL}/api/admin-api/users/${id}/toggle/`, {}, { headers: { Authorization: `Token ${token}` } });
     fetchUsers();
   };
 

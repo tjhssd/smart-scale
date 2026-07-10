@@ -46,14 +46,14 @@ class CustomLoginView(ObtainAuthToken):
         })
 
 
-# --- 1.5 QUẢN LÝ HỒ SƠ & ĐỔI MẬT KHẨU ---
+# ---  QUẢN LÝ HỒ SƠ & ĐỔI MẬT KHẨU ---
 
 class UserProfileView(APIView):
     # Bắt buộc phải truyền Token đăng nhập trong Header
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # Lấy profile của chính user đang gọi API
+        # Lấy profile của user đang gọi API
         profile, created = UserProfile.objects.get_or_create(user=request.user)
         serializer = UserProfileSerializer(profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -108,7 +108,7 @@ class DeviceViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
-# --- 2.5 API NHẬN VÀ LƯU DỮ LIỆU TỪ MÃ QR ---
+# ---  API NHẬN VÀ LƯU DỮ LIỆU TỪ MÃ QR ---
 
 class ClaimMeasurementView(APIView):
     # Chỉ user đã đăng nhập mới được lưu dữ liệu

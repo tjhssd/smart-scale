@@ -4,7 +4,7 @@ import { Thermometer, Activity, Droplets, Ruler, Scale } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 import StatCard from '../../components/StatCard';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+import { API_BASE_URL } from '../../config';
 
 export default function Dashboard() {
   const [data, setData] = useState({ 

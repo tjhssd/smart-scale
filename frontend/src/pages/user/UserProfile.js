@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { User, Lock, Save, ShieldCheck } from 'lucide-react';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+import { API_BASE_URL } from '../../config';
 
 export default function UserProfile() {
-  // --- STATE: THÔNG TIN HỒ SƠ ---
   const [profile, setProfile] = useState({
     fullName: '',
     phone: '',
@@ -17,7 +16,6 @@ export default function UserProfile() {
   const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // --- STATE: ĐỔI MẬT KHẨU ---
   const [passwords, setPasswords] = useState({
     oldPassword: '',
     newPassword: '',
